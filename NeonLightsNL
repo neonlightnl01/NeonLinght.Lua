@@ -1,11 +1,11 @@
--- Neon Lightings.Lua (NL) By arabia (FreeCam bug fixed)
--- Fly + Noclip + ESP + FreeCam + Velocidade + Sons
+-- Neon Lightings.Lua (NL) By arabia
+-- Fly + Noclip + ESP + FreeCam + Velocidade (Corrida + Voo) + Shaders
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
-local SoundService = game:GetService("SoundService")
+local Lighting = game:GetService("Lighting")
 
 local player = Players.LocalPlayer
 local camera = workspace.CurrentCamera
@@ -19,15 +19,10 @@ end
 getChar()
 
 local TECLA_HUB = Enum.KeyCode.K
-local sonsAtivados = true
 
-local velocidades = {
-	{nome = "Lenta", valor = 35},
-	{nome = "Normal", valor = 55},
-	{nome = "Rápida", valor = 90},
-	{nome = "Muito Rápida", valor = 140}
-}
-local velocidadeAtual = 2
+-- Velocidades
+local walkSpeed = 16
+local flySpeed = 55
 
 local flying, noclip, espEnabled, freecam = false, false, false, false
 local bodyVelocity, bodyGyro, flyConnection, freecamConnection
@@ -35,20 +30,25 @@ local hubOpen = true
 local originalTransparencies = {}
 local originalCanCollide = {}
 
+-- Shaders states
+local fullbrightEnabled = false
+local noFogEnabled = false
+local bloomEnabled = false
+local neonShaderEnabled = false
+
+-- Backup dos valores originais do Lighting
+local originalLighting = {
+	Brightness = Lighting.Brightness,
+	Ambient = Lighting.Ambient,
+	OutdoorAmbient = Lighting.OutdoorAmbient,
+	FogEnd = Lighting.FogEnd,
+	FogStart = Lighting.FogStart,
+	GlobalShadows = Lighting.GlobalShadows,
+	ClockTime = Lighting.ClockTime
+}
+
 local tapCount, lastTapTime = 0, 0
 local TAP_WINDOW = 0.45
-
-local function tocarSom(id, volume)
-	if not sonsAtivados then return end
-	local som = Instance.new("Sound")
-	som.SoundId = "rbxassetid://" .. tostring(id)
-	som.Volume = volume or 0.5
-	som.Parent = SoundService
-	som:Play()
-	som.Ended:Connect(function() som:Destroy() end)
-end
-
-local SOM_ON, SOM_OFF = 6895079853, 6895079853
 
 -- ====================== HUB ======================
 local ScreenGui = Instance.new("ScreenGui")
@@ -58,8 +58,8 @@ ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 ScreenGui.Parent = player:WaitForChild("PlayerGui")
 
 local Main = Instance.new("Frame")
-Main.Size = UDim2.new(0, 230, 0, 400)
-Main.Position = UDim2.new(0.5, -115, 0.5, -200)
+Main.Size = UDim2.new(0, 250, 0, 480)
+Main.Position = UDim2.new(0.5, -125, 0.5, -240)
 Main.BackgroundColor3 = Color3.fromRGB(18, 18, 22)
 Main.BorderSizePixel = 0
 Main.Active = true
@@ -72,7 +72,7 @@ stroke.Color = Color3.fromRGB(0, 200, 255)
 stroke.Thickness = 1.8
 
 local Title = Instance.new("TextLabel", Main)
-Title.Size = UDim2.new(1, 0, 0, 32)
+Title.Size = UDim2.new(1, 0, 0, 28)
 Title.Position = UDim2.new(0, 0, 0, 6)
 Title.BackgroundTransparency = 1
 Title.Text = "Neon Lighting's (NL)"
@@ -81,8 +81,8 @@ Title.Font = Enum.Font.GothamBold
 Title.TextSize = 16
 
 local SubTitle = Instance.new("TextLabel", Main)
-SubTitle.Size = UDim2.new(1, 0, 0, 18)
-SubTitle.Position = UDim2.new(0, 0, 0, 32)
+SubTitle.Size = UDim2.new(1, 0, 0, 16)
+SubTitle.Position = UDim2.new(0, 0, 0, 30)
 SubTitle.BackgroundTransparency = 1
 SubTitle.Text = "By arabia"
 SubTitle.TextColor3 = Color3.fromRGB(180, 180, 190)
@@ -91,22 +91,79 @@ SubTitle.TextSize = 12
 
 local TitleBar = Instance.new("Frame", Main)
 TitleBar.Size = UDim2.new(1, 0, 0, 2)
-TitleBar.Position = UDim2.new(0, 0, 0, 52)
+TitleBar.Position = UDim2.new(0, 0, 0, 48)
 TitleBar.BackgroundColor3 = Color3.fromRGB(0, 200, 255)
 TitleBar.BorderSizePixel = 0
 
 local CloseBtn = Instance.new("TextButton", Main)
-CloseBtn.Size = UDim2.new(0, 30, 0, 30)
-CloseBtn.Position = UDim2.new(1, -35, 0, 8)
+CloseBtn.Size = UDim2.new(0, 28, 0, 28)
+CloseBtn.Position = UDim2.new(1, -32, 0, 6)
 CloseBtn.BackgroundTransparency = 1
 CloseBtn.Text = "×"
 CloseBtn.TextColor3 = Color3.fromRGB(255, 80, 80)
 CloseBtn.Font = Enum.Font.GothamBold
-CloseBtn.TextSize = 22
+CloseBtn.TextSize = 20
 
-local function createButton(text, y, color)
-	local btn = Instance.new("TextButton", Main)
-	btn.Size = UDim2.new(0.85, 0, 0, 34)
+-- ====================== TABS ======================
+local TabMainBtn = Instance.new("TextButton", Main)
+TabMainBtn.Size = UDim2.new(0.42, 0, 0, 28)
+TabMainBtn.Position = UDim2.new(0.06, 0, 0, 58)
+TabMainBtn.BackgroundColor3 = Color3.fromRGB(0, 160, 220)
+TabMainBtn.Text = "Principal"
+TabMainBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+TabMainBtn.Font = Enum.Font.GothamBold
+TabMainBtn.TextSize = 13
+TabMainBtn.AutoButtonColor = false
+Instance.new("UICorner", TabMainBtn).CornerRadius = UDim.new(0, 6)
+
+local TabShaderBtn = Instance.new("TextButton", Main)
+TabShaderBtn.Size = UDim2.new(0.42, 0, 0, 28)
+TabShaderBtn.Position = UDim2.new(0.52, 0, 0, 58)
+TabShaderBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 38)
+TabShaderBtn.Text = "Shaders"
+TabShaderBtn.TextColor3 = Color3.fromRGB(200, 200, 210)
+TabShaderBtn.Font = Enum.Font.GothamBold
+TabShaderBtn.TextSize = 13
+TabShaderBtn.AutoButtonColor = false
+Instance.new("UICorner", TabShaderBtn).CornerRadius = UDim.new(0, 6)
+
+-- Páginas
+local PageMain = Instance.new("Frame", Main)
+PageMain.Size = UDim2.new(1, 0, 1, -95)
+PageMain.Position = UDim2.new(0, 0, 0, 95)
+PageMain.BackgroundTransparency = 1
+PageMain.Visible = true
+
+local PageShaders = Instance.new("Frame", Main)
+PageShaders.Size = UDim2.new(1, 0, 1, -95)
+PageShaders.Position = UDim2.new(0, 0, 0, 95)
+PageShaders.BackgroundTransparency = 1
+PageShaders.Visible = false
+
+local function switchPage(page)
+	PageMain.Visible = (page == "main")
+	PageShaders.Visible = (page == "shaders")
+
+	if page == "main" then
+		TabMainBtn.BackgroundColor3 = Color3.fromRGB(0, 160, 220)
+		TabMainBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+		TabShaderBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 38)
+		TabShaderBtn.TextColor3 = Color3.fromRGB(200, 200, 210)
+	else
+		TabShaderBtn.BackgroundColor3 = Color3.fromRGB(0, 160, 220)
+		TabShaderBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+		TabMainBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 38)
+		TabMainBtn.TextColor3 = Color3.fromRGB(200, 200, 210)
+	end
+end
+
+TabMainBtn.MouseButton1Click:Connect(function() switchPage("main") end)
+TabShaderBtn.MouseButton1Click:Connect(function() switchPage("shaders") end)
+
+-- ====================== HELPERS ======================
+local function createButton(parent, text, y, color)
+	local btn = Instance.new("TextButton", parent)
+	btn.Size = UDim2.new(0.85, 0, 0, 32)
 	btn.Position = UDim2.new(0.075, 0, 0, y)
 	btn.BackgroundColor3 = Color3.fromRGB(30, 30, 38)
 	btn.Text = text
@@ -130,16 +187,123 @@ local function createButton(text, y, color)
 	return btn
 end
 
-local FlyBtn     = createButton("Fly: OFF", 65, Color3.fromRGB(0, 200, 255))
-local NoclipBtn  = createButton("Noclip: OFF", 107, Color3.fromRGB(0, 255, 150))
-local ESPBtn     = createButton("ESP: OFF", 149, Color3.fromRGB(255, 80, 80))
-local FreeCamBtn = createButton("FreeCam: OFF", 191, Color3.fromRGB(255, 150, 50))
-local SpeedBtn   = createButton("Velocidade: Normal", 233, Color3.fromRGB(255, 200, 0))
-local SoundBtn   = createButton("Sons: ON", 275, Color3.fromRGB(180, 100, 255))
+local function createSlider(parent, y, labelText, minVal, maxVal, defaultVal, color, onChanged)
+	local label = Instance.new("TextLabel", parent)
+	label.Size = UDim2.new(0.85, 0, 0, 18)
+	label.Position = UDim2.new(0.075, 0, 0, y)
+	label.BackgroundTransparency = 1
+	label.Text = labelText .. ": " .. tostring(defaultVal)
+	label.TextColor3 = Color3.fromRGB(220, 220, 220)
+	label.Font = Enum.Font.Gotham
+	label.TextSize = 13
+	label.TextXAlignment = Enum.TextXAlignment.Left
 
-local Info = Instance.new("TextLabel", Main)
-Info.Size = UDim2.new(0.85, 0, 0, 45)
-Info.Position = UDim2.new(0.075, 0, 0, 320)
+	local track = Instance.new("Frame", parent)
+	track.Size = UDim2.new(0.85, 0, 0, 8)
+	track.Position = UDim2.new(0.075, 0, 0, y + 22)
+	track.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+	track.BorderSizePixel = 0
+	Instance.new("UICorner", track).CornerRadius = UDim.new(0, 4)
+
+	local fill = Instance.new("Frame", track)
+	fill.Size = UDim2.new((defaultVal - minVal) / (maxVal - minVal), 0, 1, 0)
+	fill.BackgroundColor3 = color
+	fill.BorderSizePixel = 0
+	Instance.new("UICorner", fill).CornerRadius = UDim.new(0, 4)
+
+	local handle = Instance.new("TextButton", track)
+	handle.Size = UDim2.new(0, 16, 0, 16)
+	handle.Position = UDim2.new((defaultVal - minVal) / (maxVal - minVal), -8, 0.5, -8)
+	handle.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+	handle.Text = ""
+	handle.AutoButtonColor = false
+	handle.ZIndex = 2
+	Instance.new("UICorner", handle).CornerRadius = UDim.new(1, 0)
+
+	local strokeH = Instance.new("UIStroke", handle)
+	strokeH.Color = color
+	strokeH.Thickness = 2
+
+	local dragging = false
+	local currentValue = defaultVal
+
+	local function updateVisual(val)
+		currentValue = math.clamp(math.floor(val + 0.5), minVal, maxVal)
+		local percent = (currentValue - minVal) / (maxVal - minVal)
+		fill.Size = UDim2.new(percent, 0, 1, 0)
+		handle.Position = UDim2.new(percent, -8, 0.5, -8)
+		label.Text = labelText .. ": " .. tostring(currentValue)
+		if onChanged then
+			onChanged(currentValue)
+		end
+	end
+
+	handle.MouseButton1Down:Connect(function()
+		dragging = true
+	end)
+
+	UserInputService.InputEnded:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+			dragging = false
+		end
+	end)
+
+	UserInputService.InputChanged:Connect(function(input)
+		if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+			local mousePos = UserInputService:GetMouseLocation()
+			local trackPos = track.AbsolutePosition
+			local trackSize = track.AbsoluteSize
+			local relative = (mousePos.X - trackPos.X) / trackSize.X
+			relative = math.clamp(relative, 0, 1)
+			local val = minVal + relative * (maxVal - minVal)
+			updateVisual(val)
+		end
+	end)
+
+	track.InputBegan:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+			local mousePos = UserInputService:GetMouseLocation()
+			local trackPos = track.AbsolutePosition
+			local trackSize = track.AbsoluteSize
+			local relative = (mousePos.X - trackPos.X) / trackSize.X
+			relative = math.clamp(relative, 0, 1)
+			local val = minVal + relative * (maxVal - minVal)
+			updateVisual(val)
+			dragging = true
+		end
+	end)
+
+	return {
+		setValue = updateVisual,
+		getValue = function() return currentValue end
+	}
+end
+
+local function setState(btn, state, onT, offT, color)
+	btn.Text = state and onT or offT
+	btn.BackgroundColor3 = state and color or Color3.fromRGB(30, 30, 38)
+end
+
+-- ====================== PÁGINA PRINCIPAL ======================
+local FlyBtn     = createButton(PageMain, "Fly: OFF", 8, Color3.fromRGB(0, 200, 255))
+local NoclipBtn  = createButton(PageMain, "Noclip: OFF", 48, Color3.fromRGB(0, 255, 150))
+local ESPBtn     = createButton(PageMain, "ESP: OFF", 88, Color3.fromRGB(255, 80, 80))
+local FreeCamBtn = createButton(PageMain, "FreeCam: OFF", 128, Color3.fromRGB(255, 150, 50))
+
+local walkSlider = createSlider(PageMain, 175, "Corrida", 8, 100, 16, Color3.fromRGB(255, 200, 0), function(val)
+	walkSpeed = val
+	if humanoid and humanoid.Parent then
+		humanoid.WalkSpeed = walkSpeed
+	end
+end)
+
+local flySlider = createSlider(PageMain, 230, "Voo", 20, 200, 55, Color3.fromRGB(0, 200, 255), function(val)
+	flySpeed = val
+end)
+
+local Info = Instance.new("TextLabel", PageMain)
+Info.Size = UDim2.new(0.85, 0, 0, 55)
+Info.Position = UDim2.new(0.075, 0, 0, 290)
 Info.BackgroundTransparency = 1
 Info.Text = "K ou 3 toques = Abrir/Fechar\nFreeCam: WASD + Q/E\nSegure Botão Direito para olhar"
 Info.TextColor3 = Color3.fromRGB(150, 150, 160)
@@ -147,16 +311,108 @@ Info.Font = Enum.Font.Gotham
 Info.TextSize = 11
 Info.TextYAlignment = Enum.TextYAlignment.Top
 
--- ====================== FUNÇÕES ======================
-local function setState(btn, state, onT, offT, color)
-	btn.Text = state and onT or offT
-	btn.BackgroundColor3 = state and color or Color3.fromRGB(30, 30, 38)
+-- ====================== PÁGINA SHADERS ======================
+local FullbrightBtn = createButton(PageShaders, "Fullbright: OFF", 8, Color3.fromRGB(255, 220, 50))
+local NoFogBtn      = createButton(PageShaders, "Sem Névoa: OFF", 48, Color3.fromRGB(100, 200, 255))
+local BloomBtn      = createButton(PageShaders, "Bloom: OFF", 88, Color3.fromRGB(255, 100, 200))
+local NeonShaderBtn = createButton(PageShaders, "Neon Shader: OFF", 128, Color3.fromRGB(0, 255, 180))
+
+local ShaderInfo = Instance.new("TextLabel", PageShaders)
+ShaderInfo.Size = UDim2.new(0.85, 0, 0, 80)
+ShaderInfo.Position = UDim2.new(0.075, 0, 0, 180)
+ShaderInfo.BackgroundTransparency = 1
+ShaderInfo.Text = "Fullbright = ilumina tudo\nSem Névoa = remove fog\nBloom = brilho suave\nNeon Shader = saturação + contraste"
+ShaderInfo.TextColor3 = Color3.fromRGB(150, 150, 160)
+ShaderInfo.Font = Enum.Font.Gotham
+ShaderInfo.TextSize = 12
+ShaderInfo.TextYAlignment = Enum.TextYAlignment.Top
+
+-- ====================== SHADER EFFECTS ======================
+local bloomEffect = nil
+local colorCorrection = nil
+
+local function toggleFullbright()
+	fullbrightEnabled = not fullbrightEnabled
+	if fullbrightEnabled then
+		Lighting.Brightness = 2
+		Lighting.Ambient = Color3.fromRGB(180, 180, 180)
+		Lighting.OutdoorAmbient = Color3.fromRGB(180, 180, 180)
+		Lighting.GlobalShadows = false
+		Lighting.ClockTime = 14
+		setState(FullbrightBtn, true, "Fullbright: ON", "Fullbright: OFF", Color3.fromRGB(200, 170, 30))
+	else
+		Lighting.Brightness = originalLighting.Brightness
+		Lighting.Ambient = originalLighting.Ambient
+		Lighting.OutdoorAmbient = originalLighting.OutdoorAmbient
+		Lighting.GlobalShadows = originalLighting.GlobalShadows
+		Lighting.ClockTime = originalLighting.ClockTime
+		setState(FullbrightBtn, false, "Fullbright: ON", "Fullbright: OFF", Color3.fromRGB(200, 170, 30))
+	end
 end
 
+local function toggleNoFog()
+	noFogEnabled = not noFogEnabled
+	if noFogEnabled then
+		Lighting.FogEnd = 100000
+		Lighting.FogStart = 0
+		setState(NoFogBtn, true, "Sem Névoa: ON", "Sem Névoa: OFF", Color3.fromRGB(60, 140, 200))
+	else
+		Lighting.FogEnd = originalLighting.FogEnd
+		Lighting.FogStart = originalLighting.FogStart
+		setState(NoFogBtn, false, "Sem Névoa: ON", "Sem Névoa: OFF", Color3.fromRGB(60, 140, 200))
+	end
+end
+
+local function toggleBloom()
+	bloomEnabled = not bloomEnabled
+	if bloomEnabled then
+		if not bloomEffect or not bloomEffect.Parent then
+			bloomEffect = Instance.new("BloomEffect")
+			bloomEffect.Intensity = 0.8
+			bloomEffect.Size = 24
+			bloomEffect.Threshold = 0.9
+			bloomEffect.Parent = Lighting
+		end
+		bloomEffect.Enabled = true
+		setState(BloomBtn, true, "Bloom: ON", "Bloom: OFF", Color3.fromRGB(200, 60, 150))
+	else
+		if bloomEffect then
+			bloomEffect.Enabled = false
+		end
+		setState(BloomBtn, false, "Bloom: ON", "Bloom: OFF", Color3.fromRGB(200, 60, 150))
+	end
+end
+
+local function toggleNeonShader()
+	neonShaderEnabled = not neonShaderEnabled
+	if neonShaderEnabled then
+		if not colorCorrection or not colorCorrection.Parent then
+			colorCorrection = Instance.new("ColorCorrectionEffect")
+			colorCorrection.Parent = Lighting
+		end
+		colorCorrection.Enabled = true
+		colorCorrection.Saturation = 0.55
+		colorCorrection.Contrast = 0.25
+		colorCorrection.Brightness = 0.05
+		colorCorrection.TintColor = Color3.fromRGB(200, 240, 255)
+		setState(NeonShaderBtn, true, "Neon Shader: ON", "Neon Shader: OFF", Color3.fromRGB(0, 180, 130))
+	else
+		if colorCorrection then
+			colorCorrection.Enabled = false
+		end
+		setState(NeonShaderBtn, false, "Neon Shader: ON", "Neon Shader: OFF", Color3.fromRGB(0, 180, 130))
+	end
+end
+
+FullbrightBtn.MouseButton1Click:Connect(toggleFullbright)
+NoFogBtn.MouseButton1Click:Connect(toggleNoFog)
+BloomBtn.MouseButton1Click:Connect(toggleBloom)
+NeonShaderBtn.MouseButton1Click:Connect(toggleNeonShader)
+
+-- ====================== FUNÇÕES PRINCIPAIS ======================
 local function toggleHub()
 	hubOpen = not hubOpen
 	Main.Visible = hubOpen
-	tocarSom(hubOpen and SOM_ON or SOM_OFF, 0.4)
 end
 
 local function toggleFly()
@@ -180,7 +436,7 @@ local function toggleFly()
 			if not flying or not rootPart or not rootPart.Parent then return end
 			local cam = workspace.CurrentCamera
 			local move = Vector3.zero
-			local speed = velocidades[velocidadeAtual].valor
+			local speed = flySpeed
 
 			if UserInputService:IsKeyDown(Enum.KeyCode.W) then move += cam.CFrame.LookVector end
 			if UserInputService:IsKeyDown(Enum.KeyCode.S) then move -= cam.CFrame.LookVector end
@@ -195,21 +451,18 @@ local function toggleFly()
 		end)
 
 		setState(FlyBtn, true, "Fly: ON", "Fly: OFF", Color3.fromRGB(0, 140, 200))
-		tocarSom(SOM_ON, 0.5)
 	else
 		if flyConnection then flyConnection:Disconnect() flyConnection = nil end
 		if bodyVelocity then bodyVelocity:Destroy() bodyVelocity = nil end
 		if bodyGyro then bodyGyro:Destroy() bodyGyro = nil end
 		if humanoid then humanoid.PlatformStand = false end
 		setState(FlyBtn, false, "Fly: ON", "Fly: OFF", Color3.fromRGB(0, 140, 200))
-		tocarSom(SOM_OFF, 0.4)
 	end
 end
 
 local function toggleNoclip()
 	noclip = not noclip
 	setState(NoclipBtn, noclip, "Noclip: ON", "Noclip: OFF", Color3.fromRGB(0, 160, 100))
-	tocarSom(noclip and SOM_ON or SOM_OFF, 0.45)
 end
 
 RunService.Stepped:Connect(function()
@@ -276,11 +529,9 @@ local function toggleESP()
 		for _, plr in pairs(Players:GetPlayers()) do createESP(plr) end
 		Players.PlayerAdded:Connect(createESP)
 		setState(ESPBtn, true, "ESP: ON", "ESP: OFF", Color3.fromRGB(180, 40, 40))
-		tocarSom(SOM_ON, 0.5)
 	else
 		clearESP()
 		setState(ESPBtn, false, "ESP: ON", "ESP: OFF", Color3.fromRGB(180, 40, 40))
-		tocarSom(SOM_OFF, 0.4)
 	end
 end
 
@@ -384,7 +635,6 @@ local function toggleFreeCam()
 		end)
 
 		setState(FreeCamBtn, true, "FreeCam: ON", "FreeCam: OFF", Color3.fromRGB(200, 110, 30))
-		tocarSom(SOM_ON, 0.5)
 	else
 		if freecamConnection then
 			freecamConnection:Disconnect()
@@ -406,29 +656,14 @@ local function toggleFreeCam()
 		task.delay(0.15, forcarCameraNormal)
 
 		setState(FreeCamBtn, false, "FreeCam: ON", "FreeCam: OFF", Color3.fromRGB(200, 110, 30))
-		tocarSom(SOM_OFF, 0.4)
 	end
 end
 
-local function trocarVelocidade()
-	velocidadeAtual = velocidadeAtual % #velocidades + 1
-	SpeedBtn.Text = "Velocidade: " .. velocidades[velocidadeAtual].nome
-	tocarSom(SOM_ON, 0.35)
-end
-
-local function toggleSons()
-	sonsAtivados = not sonsAtivados
-	setState(SoundBtn, sonsAtivados, "Sons: ON", "Sons: OFF", Color3.fromRGB(140, 70, 200))
-	if sonsAtivados then tocarSom(SOM_ON, 0.4) end
-end
-
--- Conexões
+-- ====================== CONEXÕES ======================
 FlyBtn.MouseButton1Click:Connect(toggleFly)
 NoclipBtn.MouseButton1Click:Connect(toggleNoclip)
 ESPBtn.MouseButton1Click:Connect(toggleESP)
 FreeCamBtn.MouseButton1Click:Connect(toggleFreeCam)
-SpeedBtn.MouseButton1Click:Connect(trocarVelocidade)
-SoundBtn.MouseButton1Click:Connect(toggleSons)
 CloseBtn.MouseButton1Click:Connect(toggleHub)
 
 UserInputService.InputBegan:Connect(function(input, gp)
@@ -471,8 +706,16 @@ player.CharacterAdded:Connect(function()
 	getChar()
 	forcarCameraNormal()
 
+	if humanoid then
+		humanoid.WalkSpeed = walkSpeed
+	end
+
 	setState(FreeCamBtn, false, "FreeCam: ON", "FreeCam: OFF", Color3.fromRGB(200, 110, 30))
 	setState(FlyBtn, false, "Fly: ON", "Fly: OFF", Color3.fromRGB(0, 140, 200))
 end)
 
-print("✅ Neon Lighting's (NL) By arabia carregado (FreeCam fixed)")
+if humanoid then
+	humanoid.WalkSpeed = walkSpeed
+end
+
+print("✅ Neon Lighting's (NL) By arabia carregado")
