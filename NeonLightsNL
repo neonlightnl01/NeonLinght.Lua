@@ -1,51 +1,52 @@
--- Iluminação Neon.Lua (NL) Por arábia
+-- Neon Lightings.Lua (NL) By arabia (FreeCam bug fixed)
 -- Fly + Noclip + ESP + FreeCam + Velocidade + Sons
 
-Jogadores locais = jogo:ObterServiço("Jogadores")
+local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
-local RunService = jogo:GetService("RunService")
+local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local SoundService = game:GetService("SoundService")
 
-jogador local = Players.LocalPlayer
-câmera local = espaço de trabalho.CâmeraAtual
+local player = Players.LocalPlayer
+local camera = workspace.CurrentCamera
 
-personagem local, humanoide, parte raiz
-função local getChar()
-	personagem = jogador.Personagem ou jogador.PersonagemAdicionado:Aguarde()
-	humanoide = personagem:WaitForChild("Humanoide")
+local character, humanoid, rootPart
+local function getChar()
+	character = player.Character or player.CharacterAdded:Wait()
+	humanoid = character:WaitForChild("Humanoid")
 	rootPart = character:WaitForChild("HumanoidRootPart")
-fim
-obterChar()
+end
+getChar()
 
 local TECLA_HUB = Enum.KeyCode.K
-filhos locaisAtivados = verdadeiro
+local sonsAtivados = true
 
-velocidades locais = {
+local velocidades = {
 	{nome = "Lenta", valor = 35},
 	{nome = "Normal", valor = 55},
 	{nome = "Rápida", valor = 90},
-	{nome = "Muito Rápido", valor = 140}
+	{nome = "Muito Rápida", valor = 140}
 }
-velocidade localAtual = 2
+local velocidadeAtual = 2
 
-vôo local, noclip, espEnabled, freecam = falso, falso, falso, falso
-velocidade do corpo local, giroscópio do corpo, conexão de voo, conexão da câmera livre
+local flying, noclip, espEnabled, freecam = false, false, false, false
+local bodyVelocity, bodyGyro, flyConnection, freecamConnection
 local hubOpen = true
 local originalTransparencies = {}
+local originalCanCollide = {}
 
 local tapCount, lastTapTime = 0, 0
-local TAP_WINDOW = 0,45
+local TAP_WINDOW = 0.45
 
-função local tocarSom(id, volume)
-	se não sonsAtivados então retorne fim
-	local som = Instance.new("Som")
+local function tocarSom(id, volume)
+	if not sonsAtivados then return end
+	local som = Instance.new("Sound")
 	som.SoundId = "rbxassetid://" .. tostring(id)
-	som.Volume = volume ou 0,5
+	som.Volume = volume or 0.5
 	som.Parent = SoundService
-	som:Reproduzir()
+	som:Play()
 	som.Ended:Connect(function() som:Destroy() end)
-fim
+end
 
 local SOM_ON, SOM_OFF = 6895079853, 6895079853
 
@@ -61,32 +62,32 @@ Main.Size = UDim2.new(0, 230, 0, 400)
 Main.Position = UDim2.new(0.5, -115, 0.5, -200)
 Main.BackgroundColor3 = Color3.fromRGB(18, 18, 22)
 Main.BorderSizePixel = 0
-Principal.Ativo = verdadeiro
-Principal.Arrastável = verdadeiro
-Principal.Pai = ScreenGui
+Main.Active = true
+Main.Draggable = true
+Main.Parent = ScreenGui
 Instance.new("UICorner", Main).CornerRadius = UDim.new(0, 12)
 
 local stroke = Instance.new("UIStroke", Main)
-traço.Cor = Cor3.deRGB(0, 200, 255)
-espessura do traço = 1,8
+stroke.Color = Color3.fromRGB(0, 200, 255)
+stroke.Thickness = 1.8
 
 local Title = Instance.new("TextLabel", Main)
-Título.Tamanho = UDim2.new(1, 0, 0, 32)
-Título.Posição = UDim2.new(0, 0, 0, 6)
-Título.TransparênciaDeFundo = 1
-Título.Texto = "Iluminação Neon (NL)"
+Title.Size = UDim2.new(1, 0, 0, 32)
+Title.Position = UDim2.new(0, 0, 0, 6)
+Title.BackgroundTransparency = 1
+Title.Text = "Neon Lighting's (NL)"
 Title.TextColor3 = Color3.fromRGB(0, 220, 255)
-Título.Fonte = Enum.Fonte.GothamBold
-Tamanho do texto do título = 16
+Title.Font = Enum.Font.GothamBold
+Title.TextSize = 16
 
 local SubTitle = Instance.new("TextLabel", Main)
 SubTitle.Size = UDim2.new(1, 0, 0, 18)
 SubTitle.Position = UDim2.new(0, 0, 0, 32)
-Subtítulo.TransparênciaDeFundo = 1
-Subtítulo.Texto = "Por Arábia"
+SubTitle.BackgroundTransparency = 1
+SubTitle.Text = "By arabia"
 SubTitle.TextColor3 = Color3.fromRGB(180, 180, 190)
-Subtítulo.Fonte = Enum.Fonte.Gotham
-Subtítulo.TamanhoDoTexto = 12
+SubTitle.Font = Enum.Font.Gotham
+SubTitle.TextSize = 12
 
 local TitleBar = Instance.new("Frame", Main)
 TitleBar.Size = UDim2.new(1, 0, 0, 2)
@@ -103,12 +104,12 @@ CloseBtn.TextColor3 = Color3.fromRGB(255, 80, 80)
 CloseBtn.Font = Enum.Font.GothamBold
 CloseBtn.TextSize = 22
 
-função local criarBotão(texto, y, cor)
+local function createButton(text, y, color)
 	local btn = Instance.new("TextButton", Main)
 	btn.Size = UDim2.new(0.85, 0, 0, 34)
 	btn.Position = UDim2.new(0.075, 0, 0, y)
 	btn.BackgroundColor3 = Color3.fromRGB(30, 30, 38)
-	btn.Text = texto
+	btn.Text = text
 	btn.TextColor3 = Color3.fromRGB(220, 220, 220)
 	btn.Font = Enum.Font.Gotham
 	btn.TextSize = 14
@@ -116,25 +117,25 @@ função local criarBotão(texto, y, cor)
 	Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 8)
 
 	local s = Instance.new("UIStroke", btn)
-	s.Color = cor
-	s.Espessura = 1,2
-	s.Transparência = 0,6
+	s.Color = color
+	s.Thickness = 1.2
+	s.Transparency = 0.6
 
-	btn.MouseEnter:Conectar(função()
+	btn.MouseEnter:Connect(function()
 		TweenService:Create(btn, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(40, 40, 55)}):Play()
-	fim)
-	btn.MouseLeave:Conectar(função()
+	end)
+	btn.MouseLeave:Connect(function()
 		TweenService:Create(btn, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(30, 30, 38)}):Play()
-	fim)
-	botão de retorno
-fim
+	end)
+	return btn
+end
 
-local FlyBtn = createButton("Voar: DESLIGADO", 65, Color3.fromRGB(0, 200, 255))
-local NoclipBtn = createButton("Noclip: OFF", 107, Color3.fromRGB(0, 255, 150))
-local ESPBtn = createButton("ESP: DESLIGADO", 149, Color3.fromRGB(255, 80, 80))
-local FreeCamBtn = createButton("FreeCam: DESLIGADO", 191, Color3.fromRGB(255, 150, 50))
-local SpeedBtn = createButton("Velocidade: Normal", 233, Color3.fromRGB(255, 200, 0))
-local SoundBtn = createButton("Sons: LIGADO", 275, Color3.fromRGB(180, 100, 255))
+local FlyBtn     = createButton("Fly: OFF", 65, Color3.fromRGB(0, 200, 255))
+local NoclipBtn  = createButton("Noclip: OFF", 107, Color3.fromRGB(0, 255, 150))
+local ESPBtn     = createButton("ESP: OFF", 149, Color3.fromRGB(255, 80, 80))
+local FreeCamBtn = createButton("FreeCam: OFF", 191, Color3.fromRGB(255, 150, 50))
+local SpeedBtn   = createButton("Velocidade: Normal", 233, Color3.fromRGB(255, 200, 0))
+local SoundBtn   = createButton("Sons: ON", 275, Color3.fromRGB(180, 100, 255))
 
 local Info = Instance.new("TextLabel", Main)
 Info.Size = UDim2.new(0.85, 0, 0, 45)
@@ -146,26 +147,26 @@ Info.Font = Enum.Font.Gotham
 Info.TextSize = 11
 Info.TextYAlignment = Enum.TextYAlignment.Top
 
--- ===================== FUNÇÕES ======================
-função local setState(btn, estado, onT, offT, cor)
-	btn.Text = estado e ligado ou desligado
-	btn.BackgroundColor3 = estado e cor ou Color3.fromRGB(30, 30, 38)
-fim
+-- ====================== FUNÇÕES ======================
+local function setState(btn, state, onT, offT, color)
+	btn.Text = state and onT or offT
+	btn.BackgroundColor3 = state and color or Color3.fromRGB(30, 30, 38)
+end
 
-função local toggleHub()
-	hubOpen = não hubOpen
-	Principal.Visível = hubOpen
-	tocarSom(hubOpen e SOM_ON ou SOM_OFF, 0.4)
-fim
+local function toggleHub()
+	hubOpen = not hubOpen
+	Main.Visible = hubOpen
+	tocarSom(hubOpen and SOM_ON or SOM_OFF, 0.4)
+end
 
-função local toggleFly()
-	se freecam então retorne fim
-	voando = não voando
+local function toggleFly()
+	if freecam then return end
+	flying = not flying
 
-	se estiver voando então
+	if flying then
 		bodyVelocity = Instance.new("BodyVelocity")
 		bodyVelocity.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
-		velocidadeDoCorpo.Velocidade = Vetor3.zero
+		bodyVelocity.Velocity = Vector3.zero
 		bodyVelocity.Parent = rootPart
 
 		bodyGyro = Instance.new("BodyGyro")
@@ -173,291 +174,305 @@ função local toggleFly()
 		bodyGyro.P = 9000
 		bodyGyro.Parent = rootPart
 
-		humanoide.PlatformStand = verdadeiro
+		humanoid.PlatformStand = true
 
-		flyConnection = RunService.RenderStepped:Connect(função()
-			Se não estiver voando, não for rootPart ou não for rootPart.Parent, então retorne.
-			câmera local = espaço de trabalho.CâmeraAtual
-			movimento local = Vector3.zero
-			velocidade local = velocidades[velocidadeAtual].valor
+		flyConnection = RunService.RenderStepped:Connect(function()
+			if not flying or not rootPart or not rootPart.Parent then return end
+			local cam = workspace.CurrentCamera
+			local move = Vector3.zero
+			local speed = velocidades[velocidadeAtual].valor
 
-			Se UserInputService:IsKeyDown(Enum.KeyCode.W) então move += cam.CFrame.LookVector fim
-			se UserInputService:IsKeyDown(Enum.KeyCode.S) então move -= cam.CFrame.LookVector fim
-			se UserInputService:IsKeyDown(Enum.KeyCode.A) então move -= cam.CFrame.RightVector fim
-			Se UserInputService:IsKeyDown(Enum.KeyCode.D) então move += cam.CFrame.RightVector fim
-			Se UserInputService:IsKeyDown(Enum.KeyCode.Space) então move += Vector3.new(0, 1, 0) fim
-			se UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) então move -= Vector3.new(0, 1, 0) fim
+			if UserInputService:IsKeyDown(Enum.KeyCode.W) then move += cam.CFrame.LookVector end
+			if UserInputService:IsKeyDown(Enum.KeyCode.S) then move -= cam.CFrame.LookVector end
+			if UserInputService:IsKeyDown(Enum.KeyCode.A) then move -= cam.CFrame.RightVector end
+			if UserInputService:IsKeyDown(Enum.KeyCode.D) then move += cam.CFrame.RightVector end
+			if UserInputService:IsKeyDown(Enum.KeyCode.Space) then move += Vector3.new(0, 1, 0) end
+			if UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) then move -= Vector3.new(0, 1, 0) end
 
-			Se move.Magnitude > 0 então move = move.Unit * speed fim
-			velocidadeDoCorpo.Velocidade = movimento
+			if move.Magnitude > 0 then move = move.Unit * speed end
+			bodyVelocity.Velocity = move
 			bodyGyro.CFrame = cam.CFrame
-		fim)
+		end)
 
-		setState(FlyBtn, true, "Voar: LIGADO", "Voar: DESLIGADO", Color3.fromRGB(0, 140, 200))
+		setState(FlyBtn, true, "Fly: ON", "Fly: OFF", Color3.fromRGB(0, 140, 200))
 		tocarSom(SOM_ON, 0.5)
-	outro
-		se flyConnection então flyConnection:Disconnect() flyConnection = nil fim
-		se bodyVelocity então bodyVelocity:Destroy() bodyVelocity = nil fim
-		se bodyGyro então bodyGyro:Destroy() bodyGyro = nil fim
-		se humanoide então humanoide.PlatformStand = falso fim
-		setState(FlyBtn, false, "Voar: LIGADO", "Voar: DESLIGADO", Color3.fromRGB(0, 140, 200))
+	else
+		if flyConnection then flyConnection:Disconnect() flyConnection = nil end
+		if bodyVelocity then bodyVelocity:Destroy() bodyVelocity = nil end
+		if bodyGyro then bodyGyro:Destroy() bodyGyro = nil end
+		if humanoid then humanoid.PlatformStand = false end
+		setState(FlyBtn, false, "Fly: ON", "Fly: OFF", Color3.fromRGB(0, 140, 200))
 		tocarSom(SOM_OFF, 0.4)
-	fim
-fim
+	end
+end
 
-função local toggleNoclip()
-	noclip = não noclip
+local function toggleNoclip()
+	noclip = not noclip
 	setState(NoclipBtn, noclip, "Noclip: ON", "Noclip: OFF", Color3.fromRGB(0, 160, 100))
-	tocarSom(noclip e SOM_ON ou SOM_OFF, 0,45)
-fim
+	tocarSom(noclip and SOM_ON or SOM_OFF, 0.45)
+end
 
 RunService.Stepped:Connect(function()
-	se (noclip ou freecam) e personagem então
-		para _, parte em pares(caractere:ObterDescendentes()) faça
-			se parte:IsA("BasePart") então
-				parte.PodeColidir = falso
-			fim
-		fim
-	fim
-fim)
+	if (noclip or freecam) and character then
+		for _, part in pairs(character:GetDescendants()) do
+			if part:IsA("BasePart") then
+				part.CanCollide = false
+			end
+		end
+	end
+end)
 
-função local criarESP(plr)
-	se plr == jogador então retorne fim
-	função local aplicar(caractere)
-		Se não for um caractere, retorne o fim.
+local function createESP(plr)
+	if plr == player then return end
+	local function apply(char)
+		if not char then return end
 		local oldH = char:FindFirstChild("AdminHighlight")
-		se oldH então oldH:Destruir() fim
+		if oldH then oldH:Destroy() end
 		local oldB = char:FindFirstChild("AdminName", true)
-		se oldB então oldB:Destruir() fim
+		if oldB then oldB:Destroy() end
 
-		local h = Instance.new("Destaque")
+		local h = Instance.new("Highlight")
 		h.Name = "AdminHighlight"
 		h.FillColor = Color3.fromRGB(255, 50, 50)
 		h.OutlineColor = Color3.fromRGB(255, 255, 255)
-		h.FillTransparency = 0,55
+		h.FillTransparency = 0.55
 		h.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
 		h.Parent = char
 
-		raiz local = char:FindFirstChild("HumanoidRootPart")
-		Se não for raiz, retorne fim.
+		local root = char:FindFirstChild("HumanoidRootPart")
+		if not root then return end
 
 		local b = Instance.new("BillboardGui")
-		b.Nome = "Nome do Administrador"
+		b.Name = "AdminName"
 		b.Size = UDim2.new(0, 200, 0, 40)
 		b.StudsOffset = Vector3.new(0, 3.3, 0)
-		b.AlwaysOnTop = verdadeiro
-		b.Parent = raiz
+		b.AlwaysOnTop = true
+		b.Parent = root
 
 		local t = Instance.new("TextLabel", b)
 		t.Size = UDim2.new(1, 0, 1, 0)
 		t.BackgroundTransparency = 1
-		t.Texto = plr.Nome
+		t.Text = plr.Name
 		t.TextColor3 = Color3.new(1, 1, 1)
 		t.TextStrokeTransparency = 0.4
 		t.Font = Enum.Font.GothamBold
 		t.TextSize = 15
-	fim
-	se plr.Character então aplicar(plr.Character) fim
+	end
+	if plr.Character then apply(plr.Character) end
 	plr.CharacterAdded:Connect(apply)
-fim
+end
 
-função local clearESP()
-	para _, obj em pares(workspace:GetDescendants()) faça
-		Se obj.Name == "AdminHighlight" ou obj.Name == "AdminName", então
-			obj:Destruir()
-		fim
-	fim
-fim
+local function clearESP()
+	for _, obj in pairs(workspace:GetDescendants()) do
+		if obj.Name == "AdminHighlight" or obj.Name == "AdminName" then
+			obj:Destroy()
+		end
+	end
+end
 
-função local toggleESP()
-	espEnabled = não espEnabled
-	se espEnabled então
-		para _, plr em pares(Jogadores:ObterJogadores()) faça criarESP(plr) fim
-		Jogadores.JogadorAdicionado:Conectar(criarESP)
-		setState(ESPBtn, true, "ESP: LIGADO", "ESP: DESLIGADO", Color3.fromRGB(180, 40, 40))
+local function toggleESP()
+	espEnabled = not espEnabled
+	if espEnabled then
+		for _, plr in pairs(Players:GetPlayers()) do createESP(plr) end
+		Players.PlayerAdded:Connect(createESP)
+		setState(ESPBtn, true, "ESP: ON", "ESP: OFF", Color3.fromRGB(180, 40, 40))
 		tocarSom(SOM_ON, 0.5)
-	outro
-		limparESP()
+	else
+		clearESP()
 		setState(ESPBtn, false, "ESP: ON", "ESP: OFF", Color3.fromRGB(180, 40, 40))
 		tocarSom(SOM_OFF, 0.4)
-	fim
-fim
+	end
+end
 
-função local setInvisible(estado)
-	Se não for um caractere, retorne o fim.
-	para _, obj em pares(caractere:ObterDescendentes()) faça
-		se obj:IsA("BasePart") então
-			se estado então
-				originalTransparencies[obj] = obj.Transparência
-				obj.Transparência = 1
+local function setInvisible(state)
+	if not character then return end
+	for _, obj in pairs(character:GetDescendants()) do
+		if obj:IsA("BasePart") then
+			if state then
+				originalTransparencies[obj] = obj.Transparency
+				originalCanCollide[obj] = obj.CanCollide
+				obj.Transparency = 1
 				obj.CanCollide = false
-			outro
-				se originalTransparencies[obj] ~= nil então
-					obj.Transparência = originalTransparencies[obj]
-				fim
-			fim
-		senão se obj:IsA("Decalque") então
-			se estado então
-				originalTransparencies[obj] = obj.Transparência
-				obj.Transparência = 1
-			outro
-				se originalTransparencies[obj] ~= nil então
-					obj.Transparência = originalTransparencies[obj]
-				fim
-			fim
-		fim
-	fim
-	se não especificar então
-		transparênciasOriginal = {}
-	fim
-fim
+			else
+				if originalTransparencies[obj] ~= nil then
+					obj.Transparency = originalTransparencies[obj]
+				end
+				if originalCanCollide[obj] ~= nil then
+					obj.CanCollide = originalCanCollide[obj]
+				end
+			end
+		elseif obj:IsA("Decal") then
+			if state then
+				originalTransparencies[obj] = obj.Transparency
+				obj.Transparency = 1
+			else
+				if originalTransparencies[obj] ~= nil then
+					obj.Transparency = originalTransparencies[obj]
+				end
+			end
+		end
+	end
+	if not state then
+		originalTransparencies = {}
+		originalCanCollide = {}
+	end
+end
 
-função local paracarCameraNormal()
-	pcall(função()
+local function forcarCameraNormal()
+	pcall(function()
 		camera.CameraType = Enum.CameraType.Custom
-		se humanoide e humanoide.Parent então
-			câmera.CameraSubject = humanoide
-		fim
+		if humanoid and humanoid.Parent then
+			camera.CameraSubject = humanoid
+		end
 		UserInputService.MouseBehavior = Enum.MouseBehavior.Default
-	fim)
-fim
+	end)
+end
 
-função local toggleFreeCam()
-	freecam = não freecam
+local function toggleFreeCam()
+	freecam = not freecam
 
-	se for freecam então
-		se estiver voando, então alterneFly() fim
+	if freecam then
+		if flying then toggleFly() end
 
-		câmera.TipoCâmera = Enum.TipoCâmera.Scriptável
-		definirInvisível(verdadeiro)
-		se humanoide então
-			humanoide.PlatformStand = verdadeiro
-			humanoide.RotaçãoAutomática = falso
-		fim
+		camera.CameraType = Enum.CameraType.Scriptable
+		setInvisible(true)
 
-		local camCF = câmera.CFrame
+		if rootPart then
+			rootPart.Anchored = true
+		end
+		if humanoid then
+			humanoid.PlatformStand = true
+			humanoid.AutoRotate = false
+		end
+
+		local camCF = camera.CFrame
 		local yaw = math.atan2(-camCF.LookVector.X, -camCF.LookVector.Z)
 		local pitch = math.asin(math.clamp(camCF.LookVector.Y, -1, 1))
 
 		freecamConnection = RunService.RenderStepped:Connect(function(dt)
-			Se não for freecam, retorne ao fim.
+			if not freecam then return end
 
-			velocidade local = UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) e 120 ou 55
-			movimento local = Vector3.zero
+			local speed = UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) and 120 or 55
+			local move = Vector3.zero
 
 			local rotCF = CFrame.Angles(0, yaw, 0) * CFrame.Angles(pitch, 0, 0)
 			local look = rotCF.LookVector
-			local direita = rotCF.VetorDireito
+			local right = rotCF.RightVector
 
-			se UserInputService:IsKeyDown(Enum.KeyCode.W) então mover += olhar fim
-			se UserInputService:IsKeyDown(Enum.KeyCode.S) então mover -= olhar fim
-			Se UserInputService:IsKeyDown(Enum.KeyCode.A) então mover -= direita fim
-			se UserInputService:IsKeyDown(Enum.KeyCode.D) então mover += direita fim
-			Se UserInputService:IsKeyDown(Enum.KeyCode.E) então move += Vector3.new(0, 1, 0) fim
-			Se UserInputService:IsKeyDown(Enum.KeyCode.Q) então move -= Vector3.new(0, 1, 0) fim
+			if UserInputService:IsKeyDown(Enum.KeyCode.W) then move += look end
+			if UserInputService:IsKeyDown(Enum.KeyCode.S) then move -= look end
+			if UserInputService:IsKeyDown(Enum.KeyCode.A) then move -= right end
+			if UserInputService:IsKeyDown(Enum.KeyCode.D) then move += right end
+			if UserInputService:IsKeyDown(Enum.KeyCode.E) then move += Vector3.new(0, 1, 0) end
+			if UserInputService:IsKeyDown(Enum.KeyCode.Q) then move -= Vector3.new(0, 1, 0) end
 
-			Se move.Magnitude > 0 então
-				camCF = camCF + unidade de movimento * velocidade * dt
-			fim
+			if move.Magnitude > 0 then
+				camCF = camCF + move.Unit * speed * dt
+			end
 
-			se UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton2) então
+			if UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton2) then
 				UserInputService.MouseBehavior = Enum.MouseBehavior.LockCurrentPosition
 				local delta = UserInputService:GetMouseDelta()
-				guinada = guinada - delta.X * 0,004
+				yaw = yaw - delta.X * 0.004
 				pitch = math.clamp(pitch - delta.Y * 0.004, -1.4, 1.4)
-			outro
+			else
 				UserInputService.MouseBehavior = Enum.MouseBehavior.Default
-			fim
+			end
 
 			camera.CFrame = CFrame.new(camCF.Position) * CFrame.Angles(0, yaw, 0) * CFrame.Angles(pitch, 0, 0)
-			camCF = câmera.CFrame
-		fim)
+			camCF = camera.CFrame
+		end)
 
-		setState(FreeCamBtn, true, "FreeCam: LIGADO", "FreeCam: DESLIGADO", Color3.fromRGB(200, 110, 30))
+		setState(FreeCamBtn, true, "FreeCam: ON", "FreeCam: OFF", Color3.fromRGB(200, 110, 30))
 		tocarSom(SOM_ON, 0.5)
-	outro
-		se freecamConnection então
-			freecamConnection:Desconectar()
-			freecamConnection = nulo
-		fim
+	else
+		if freecamConnection then
+			freecamConnection:Disconnect()
+			freecamConnection = nil
+		end
 
-		definirInvisível(falso)
-		se humanoide então
-			humanoide.PlatformStand = falso
-			humanoide.RotaçãoAutomática = verdadeiro
-		fim
+		setInvisible(false)
 
-		para câmera de carroNormal()
-		tarefa.atraso(0.05, paraCâmeraNormal)
+		if rootPart then
+			rootPart.Anchored = false
+		end
+		if humanoid then
+			humanoid.PlatformStand = false
+			humanoid.AutoRotate = true
+		end
 
-		setState(FreeCamBtn, false, "FreeCam: LIGADO", "FreeCam: DESLIGADO", Color3.fromRGB(200, 110, 30))
+		forcarCameraNormal()
+		task.delay(0.05, forcarCameraNormal)
+		task.delay(0.15, forcarCameraNormal)
+
+		setState(FreeCamBtn, false, "FreeCam: ON", "FreeCam: OFF", Color3.fromRGB(200, 110, 30))
 		tocarSom(SOM_OFF, 0.4)
-	fim
-fim
+	end
+end
 
-função local trocarVelora()
+local function trocarVelocidade()
 	velocidadeAtual = velocidadeAtual % #velocidades + 1
 	SpeedBtn.Text = "Velocidade: " .. velocidades[velocidadeAtual].nome
 	tocarSom(SOM_ON, 0.35)
-fim
+end
 
-função local alternarFilhos()
-	filhosAtivados = não filhosAtivados
-	setState(SoundBtn, sonsAtivados, "Sons: LIGADO", "Sons: DESLIGADO", Color3.fromRGB(140, 70, 200))
-	if filhosAtivados then tocarSom(SOM_ON, 0.4) end
-fim
+local function toggleSons()
+	sonsAtivados = not sonsAtivados
+	setState(SoundBtn, sonsAtivados, "Sons: ON", "Sons: OFF", Color3.fromRGB(140, 70, 200))
+	if sonsAtivados then tocarSom(SOM_ON, 0.4) end
+end
 
 -- Conexões
-FlyBtn.MouseButton1Click:Conectar(alternarVoo)
-NoclipBtn.MouseButton1Click:Conectar(alternarNoclip)
-ESPBtn.MouseButton1Click:Conectar(alternarESP)
-FreeCamBtn.MouseButton1Click:Conectar(alternarFreeCam)
-SpeedBtn.MouseButton1Click:Conectar(trocarVelocidade)
-SoundBtn.MouseButton1Click:Conectar(alternarSons)
+FlyBtn.MouseButton1Click:Connect(toggleFly)
+NoclipBtn.MouseButton1Click:Connect(toggleNoclip)
+ESPBtn.MouseButton1Click:Connect(toggleESP)
+FreeCamBtn.MouseButton1Click:Connect(toggleFreeCam)
+SpeedBtn.MouseButton1Click:Connect(trocarVelocidade)
+SoundBtn.MouseButton1Click:Connect(toggleSons)
 CloseBtn.MouseButton1Click:Connect(toggleHub)
 
 UserInputService.InputBegan:Connect(function(input, gp)
-	se gp então retorne fim
-	Se input.KeyCode == TECLA_HUB então
-		alternarHub()
-		retornar
-	fim
-	Se input.UserInputType == Enum.UserInputType.Touch então
-		local agora = tick()
-		se agora - últimoTempoDeToque <= TAP_WINDOW então
-			contagemDeToques += 1
-		outro
-			contagemDeToques = 1
-		fim
-		últimoToque = agora
-		se tapCount >= 3 então
-			alternarHub()
-			contagemDeToques = 0
-		fim
-	fim
-fim)
+	if gp then return end
+	if input.KeyCode == TECLA_HUB then
+		toggleHub()
+		return
+	end
+	if input.UserInputType == Enum.UserInputType.Touch then
+		local now = tick()
+		if now - lastTapTime <= TAP_WINDOW then
+			tapCount += 1
+		else
+			tapCount = 1
+		end
+		lastTapTime = now
+		if tapCount >= 3 then
+			toggleHub()
+			tapCount = 0
+		end
+	end
+end)
 
-jogador.PersonagemAdicionado:Conectar(função()
-	se for freecam então
-		freecam = falso
-		se freecamConnection então
-			freecamConnection:Desconectar()
-			freecamConnection = nulo
-		fim
-	fim
-	se estiver voando então
-		voando = falso
-		se flyConnection então flyConnection:Desconectar() fim
-		se bodyVelocity então bodyVelocity:Destroy() fim
-		se bodyGyro então bodyGyro:Destroy() fim
-	fim
+player.CharacterAdded:Connect(function()
+	if freecam then
+		freecam = false
+		if freecamConnection then
+			freecamConnection:Disconnect()
+			freecamConnection = nil
+		end
+	end
+	if flying then
+		flying = false
+		if flyConnection then flyConnection:Disconnect() end
+		if bodyVelocity then bodyVelocity:Destroy() end
+		if bodyGyro then bodyGyro:Destroy() end
+	end
 
-	tarefa.esperar(0.3)
-	obterChar()
-	para câmera de carroNormal()
+	task.wait(0.3)
+	getChar()
+	forcarCameraNormal()
 
-	setState(FreeCamBtn, false, "FreeCam: LIGADO", "FreeCam: DESLIGADO", Color3.fromRGB(200, 110, 30))
-	setState(FlyBtn, false, "Voar: LIGADO", "Voar: DESLIGADO", Color3.fromRGB(0, 140, 200))
-fim)
+	setState(FreeCamBtn, false, "FreeCam: ON", "FreeCam: OFF", Color3.fromRGB(200, 110, 30))
+	setState(FlyBtn, false, "Fly: ON", "Fly: OFF", Color3.fromRGB(0, 140, 200))
+end)
 
-print("✅ Neon Lighting's (NL) Por arabia carregado")
+print("✅ Neon Lighting's (NL) By arabia carregado (FreeCam fixed)")
