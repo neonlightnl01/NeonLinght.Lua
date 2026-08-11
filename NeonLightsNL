@@ -1,0 +1,463 @@
+-- Iluminação Neon.Lua (NL) Por arábia
+-- Fly + Noclip + ESP + FreeCam + Velocidade + Sons
+
+Jogadores locais = jogo:ObterServiço("Jogadores")
+local UserInputService = game:GetService("UserInputService")
+local RunService = jogo:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+local SoundService = game:GetService("SoundService")
+
+jogador local = Players.LocalPlayer
+câmera local = espaço de trabalho.CâmeraAtual
+
+personagem local, humanoide, parte raiz
+função local getChar()
+	personagem = jogador.Personagem ou jogador.PersonagemAdicionado:Aguarde()
+	humanoide = personagem:WaitForChild("Humanoide")
+	rootPart = character:WaitForChild("HumanoidRootPart")
+fim
+obterChar()
+
+local TECLA_HUB = Enum.KeyCode.K
+filhos locaisAtivados = verdadeiro
+
+velocidades locais = {
+	{nome = "Lenta", valor = 35},
+	{nome = "Normal", valor = 55},
+	{nome = "Rápida", valor = 90},
+	{nome = "Muito Rápido", valor = 140}
+}
+velocidade localAtual = 2
+
+vôo local, noclip, espEnabled, freecam = falso, falso, falso, falso
+velocidade do corpo local, giroscópio do corpo, conexão de voo, conexão da câmera livre
+local hubOpen = true
+local originalTransparencies = {}
+
+local tapCount, lastTapTime = 0, 0
+local TAP_WINDOW = 0,45
+
+função local tocarSom(id, volume)
+	se não sonsAtivados então retorne fim
+	local som = Instance.new("Som")
+	som.SoundId = "rbxassetid://" .. tostring(id)
+	som.Volume = volume ou 0,5
+	som.Parent = SoundService
+	som:Reproduzir()
+	som.Ended:Connect(function() som:Destroy() end)
+fim
+
+local SOM_ON, SOM_OFF = 6895079853, 6895079853
+
+-- ====================== HUB ======================
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "NeonLightingHub"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+ScreenGui.Parent = player:WaitForChild("PlayerGui")
+
+local Main = Instance.new("Frame")
+Main.Size = UDim2.new(0, 230, 0, 400)
+Main.Position = UDim2.new(0.5, -115, 0.5, -200)
+Main.BackgroundColor3 = Color3.fromRGB(18, 18, 22)
+Main.BorderSizePixel = 0
+Principal.Ativo = verdadeiro
+Principal.Arrastável = verdadeiro
+Principal.Pai = ScreenGui
+Instance.new("UICorner", Main).CornerRadius = UDim.new(0, 12)
+
+local stroke = Instance.new("UIStroke", Main)
+traço.Cor = Cor3.deRGB(0, 200, 255)
+espessura do traço = 1,8
+
+local Title = Instance.new("TextLabel", Main)
+Título.Tamanho = UDim2.new(1, 0, 0, 32)
+Título.Posição = UDim2.new(0, 0, 0, 6)
+Título.TransparênciaDeFundo = 1
+Título.Texto = "Iluminação Neon (NL)"
+Title.TextColor3 = Color3.fromRGB(0, 220, 255)
+Título.Fonte = Enum.Fonte.GothamBold
+Tamanho do texto do título = 16
+
+local SubTitle = Instance.new("TextLabel", Main)
+SubTitle.Size = UDim2.new(1, 0, 0, 18)
+SubTitle.Position = UDim2.new(0, 0, 0, 32)
+Subtítulo.TransparênciaDeFundo = 1
+Subtítulo.Texto = "Por Arábia"
+SubTitle.TextColor3 = Color3.fromRGB(180, 180, 190)
+Subtítulo.Fonte = Enum.Fonte.Gotham
+Subtítulo.TamanhoDoTexto = 12
+
+local TitleBar = Instance.new("Frame", Main)
+TitleBar.Size = UDim2.new(1, 0, 0, 2)
+TitleBar.Position = UDim2.new(0, 0, 0, 52)
+TitleBar.BackgroundColor3 = Color3.fromRGB(0, 200, 255)
+TitleBar.BorderSizePixel = 0
+
+local CloseBtn = Instance.new("TextButton", Main)
+CloseBtn.Size = UDim2.new(0, 30, 0, 30)
+CloseBtn.Position = UDim2.new(1, -35, 0, 8)
+CloseBtn.BackgroundTransparency = 1
+CloseBtn.Text = "×"
+CloseBtn.TextColor3 = Color3.fromRGB(255, 80, 80)
+CloseBtn.Font = Enum.Font.GothamBold
+CloseBtn.TextSize = 22
+
+função local criarBotão(texto, y, cor)
+	local btn = Instance.new("TextButton", Main)
+	btn.Size = UDim2.new(0.85, 0, 0, 34)
+	btn.Position = UDim2.new(0.075, 0, 0, y)
+	btn.BackgroundColor3 = Color3.fromRGB(30, 30, 38)
+	btn.Text = texto
+	btn.TextColor3 = Color3.fromRGB(220, 220, 220)
+	btn.Font = Enum.Font.Gotham
+	btn.TextSize = 14
+	btn.AutoButtonColor = false
+	Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 8)
+
+	local s = Instance.new("UIStroke", btn)
+	s.Color = cor
+	s.Espessura = 1,2
+	s.Transparência = 0,6
+
+	btn.MouseEnter:Conectar(função()
+		TweenService:Create(btn, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(40, 40, 55)}):Play()
+	fim)
+	btn.MouseLeave:Conectar(função()
+		TweenService:Create(btn, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(30, 30, 38)}):Play()
+	fim)
+	botão de retorno
+fim
+
+local FlyBtn = createButton("Voar: DESLIGADO", 65, Color3.fromRGB(0, 200, 255))
+local NoclipBtn = createButton("Noclip: OFF", 107, Color3.fromRGB(0, 255, 150))
+local ESPBtn = createButton("ESP: DESLIGADO", 149, Color3.fromRGB(255, 80, 80))
+local FreeCamBtn = createButton("FreeCam: DESLIGADO", 191, Color3.fromRGB(255, 150, 50))
+local SpeedBtn = createButton("Velocidade: Normal", 233, Color3.fromRGB(255, 200, 0))
+local SoundBtn = createButton("Sons: LIGADO", 275, Color3.fromRGB(180, 100, 255))
+
+local Info = Instance.new("TextLabel", Main)
+Info.Size = UDim2.new(0.85, 0, 0, 45)
+Info.Position = UDim2.new(0.075, 0, 0, 320)
+Info.BackgroundTransparency = 1
+Info.Text = "K ou 3 toques = Abrir/Fechar\nFreeCam: WASD + Q/E\nSegure Botão Direito para olhar"
+Info.TextColor3 = Color3.fromRGB(150, 150, 160)
+Info.Font = Enum.Font.Gotham
+Info.TextSize = 11
+Info.TextYAlignment = Enum.TextYAlignment.Top
+
+-- ===================== FUNÇÕES ======================
+função local setState(btn, estado, onT, offT, cor)
+	btn.Text = estado e ligado ou desligado
+	btn.BackgroundColor3 = estado e cor ou Color3.fromRGB(30, 30, 38)
+fim
+
+função local toggleHub()
+	hubOpen = não hubOpen
+	Principal.Visível = hubOpen
+	tocarSom(hubOpen e SOM_ON ou SOM_OFF, 0.4)
+fim
+
+função local toggleFly()
+	se freecam então retorne fim
+	voando = não voando
+
+	se estiver voando então
+		bodyVelocity = Instance.new("BodyVelocity")
+		bodyVelocity.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+		velocidadeDoCorpo.Velocidade = Vetor3.zero
+		bodyVelocity.Parent = rootPart
+
+		bodyGyro = Instance.new("BodyGyro")
+		bodyGyro.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
+		bodyGyro.P = 9000
+		bodyGyro.Parent = rootPart
+
+		humanoide.PlatformStand = verdadeiro
+
+		flyConnection = RunService.RenderStepped:Connect(função()
+			Se não estiver voando, não for rootPart ou não for rootPart.Parent, então retorne.
+			câmera local = espaço de trabalho.CâmeraAtual
+			movimento local = Vector3.zero
+			velocidade local = velocidades[velocidadeAtual].valor
+
+			Se UserInputService:IsKeyDown(Enum.KeyCode.W) então move += cam.CFrame.LookVector fim
+			se UserInputService:IsKeyDown(Enum.KeyCode.S) então move -= cam.CFrame.LookVector fim
+			se UserInputService:IsKeyDown(Enum.KeyCode.A) então move -= cam.CFrame.RightVector fim
+			Se UserInputService:IsKeyDown(Enum.KeyCode.D) então move += cam.CFrame.RightVector fim
+			Se UserInputService:IsKeyDown(Enum.KeyCode.Space) então move += Vector3.new(0, 1, 0) fim
+			se UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) então move -= Vector3.new(0, 1, 0) fim
+
+			Se move.Magnitude > 0 então move = move.Unit * speed fim
+			velocidadeDoCorpo.Velocidade = movimento
+			bodyGyro.CFrame = cam.CFrame
+		fim)
+
+		setState(FlyBtn, true, "Voar: LIGADO", "Voar: DESLIGADO", Color3.fromRGB(0, 140, 200))
+		tocarSom(SOM_ON, 0.5)
+	outro
+		se flyConnection então flyConnection:Disconnect() flyConnection = nil fim
+		se bodyVelocity então bodyVelocity:Destroy() bodyVelocity = nil fim
+		se bodyGyro então bodyGyro:Destroy() bodyGyro = nil fim
+		se humanoide então humanoide.PlatformStand = falso fim
+		setState(FlyBtn, false, "Voar: LIGADO", "Voar: DESLIGADO", Color3.fromRGB(0, 140, 200))
+		tocarSom(SOM_OFF, 0.4)
+	fim
+fim
+
+função local toggleNoclip()
+	noclip = não noclip
+	setState(NoclipBtn, noclip, "Noclip: ON", "Noclip: OFF", Color3.fromRGB(0, 160, 100))
+	tocarSom(noclip e SOM_ON ou SOM_OFF, 0,45)
+fim
+
+RunService.Stepped:Connect(function()
+	se (noclip ou freecam) e personagem então
+		para _, parte em pares(caractere:ObterDescendentes()) faça
+			se parte:IsA("BasePart") então
+				parte.PodeColidir = falso
+			fim
+		fim
+	fim
+fim)
+
+função local criarESP(plr)
+	se plr == jogador então retorne fim
+	função local aplicar(caractere)
+		Se não for um caractere, retorne o fim.
+		local oldH = char:FindFirstChild("AdminHighlight")
+		se oldH então oldH:Destruir() fim
+		local oldB = char:FindFirstChild("AdminName", true)
+		se oldB então oldB:Destruir() fim
+
+		local h = Instance.new("Destaque")
+		h.Name = "AdminHighlight"
+		h.FillColor = Color3.fromRGB(255, 50, 50)
+		h.OutlineColor = Color3.fromRGB(255, 255, 255)
+		h.FillTransparency = 0,55
+		h.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+		h.Parent = char
+
+		raiz local = char:FindFirstChild("HumanoidRootPart")
+		Se não for raiz, retorne fim.
+
+		local b = Instance.new("BillboardGui")
+		b.Nome = "Nome do Administrador"
+		b.Size = UDim2.new(0, 200, 0, 40)
+		b.StudsOffset = Vector3.new(0, 3.3, 0)
+		b.AlwaysOnTop = verdadeiro
+		b.Parent = raiz
+
+		local t = Instance.new("TextLabel", b)
+		t.Size = UDim2.new(1, 0, 1, 0)
+		t.BackgroundTransparency = 1
+		t.Texto = plr.Nome
+		t.TextColor3 = Color3.new(1, 1, 1)
+		t.TextStrokeTransparency = 0.4
+		t.Font = Enum.Font.GothamBold
+		t.TextSize = 15
+	fim
+	se plr.Character então aplicar(plr.Character) fim
+	plr.CharacterAdded:Connect(apply)
+fim
+
+função local clearESP()
+	para _, obj em pares(workspace:GetDescendants()) faça
+		Se obj.Name == "AdminHighlight" ou obj.Name == "AdminName", então
+			obj:Destruir()
+		fim
+	fim
+fim
+
+função local toggleESP()
+	espEnabled = não espEnabled
+	se espEnabled então
+		para _, plr em pares(Jogadores:ObterJogadores()) faça criarESP(plr) fim
+		Jogadores.JogadorAdicionado:Conectar(criarESP)
+		setState(ESPBtn, true, "ESP: LIGADO", "ESP: DESLIGADO", Color3.fromRGB(180, 40, 40))
+		tocarSom(SOM_ON, 0.5)
+	outro
+		limparESP()
+		setState(ESPBtn, false, "ESP: ON", "ESP: OFF", Color3.fromRGB(180, 40, 40))
+		tocarSom(SOM_OFF, 0.4)
+	fim
+fim
+
+função local setInvisible(estado)
+	Se não for um caractere, retorne o fim.
+	para _, obj em pares(caractere:ObterDescendentes()) faça
+		se obj:IsA("BasePart") então
+			se estado então
+				originalTransparencies[obj] = obj.Transparência
+				obj.Transparência = 1
+				obj.CanCollide = false
+			outro
+				se originalTransparencies[obj] ~= nil então
+					obj.Transparência = originalTransparencies[obj]
+				fim
+			fim
+		senão se obj:IsA("Decalque") então
+			se estado então
+				originalTransparencies[obj] = obj.Transparência
+				obj.Transparência = 1
+			outro
+				se originalTransparencies[obj] ~= nil então
+					obj.Transparência = originalTransparencies[obj]
+				fim
+			fim
+		fim
+	fim
+	se não especificar então
+		transparênciasOriginal = {}
+	fim
+fim
+
+função local paracarCameraNormal()
+	pcall(função()
+		camera.CameraType = Enum.CameraType.Custom
+		se humanoide e humanoide.Parent então
+			câmera.CameraSubject = humanoide
+		fim
+		UserInputService.MouseBehavior = Enum.MouseBehavior.Default
+	fim)
+fim
+
+função local toggleFreeCam()
+	freecam = não freecam
+
+	se for freecam então
+		se estiver voando, então alterneFly() fim
+
+		câmera.TipoCâmera = Enum.TipoCâmera.Scriptável
+		definirInvisível(verdadeiro)
+		se humanoide então
+			humanoide.PlatformStand = verdadeiro
+			humanoide.RotaçãoAutomática = falso
+		fim
+
+		local camCF = câmera.CFrame
+		local yaw = math.atan2(-camCF.LookVector.X, -camCF.LookVector.Z)
+		local pitch = math.asin(math.clamp(camCF.LookVector.Y, -1, 1))
+
+		freecamConnection = RunService.RenderStepped:Connect(function(dt)
+			Se não for freecam, retorne ao fim.
+
+			velocidade local = UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) e 120 ou 55
+			movimento local = Vector3.zero
+
+			local rotCF = CFrame.Angles(0, yaw, 0) * CFrame.Angles(pitch, 0, 0)
+			local look = rotCF.LookVector
+			local direita = rotCF.VetorDireito
+
+			se UserInputService:IsKeyDown(Enum.KeyCode.W) então mover += olhar fim
+			se UserInputService:IsKeyDown(Enum.KeyCode.S) então mover -= olhar fim
+			Se UserInputService:IsKeyDown(Enum.KeyCode.A) então mover -= direita fim
+			se UserInputService:IsKeyDown(Enum.KeyCode.D) então mover += direita fim
+			Se UserInputService:IsKeyDown(Enum.KeyCode.E) então move += Vector3.new(0, 1, 0) fim
+			Se UserInputService:IsKeyDown(Enum.KeyCode.Q) então move -= Vector3.new(0, 1, 0) fim
+
+			Se move.Magnitude > 0 então
+				camCF = camCF + unidade de movimento * velocidade * dt
+			fim
+
+			se UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton2) então
+				UserInputService.MouseBehavior = Enum.MouseBehavior.LockCurrentPosition
+				local delta = UserInputService:GetMouseDelta()
+				guinada = guinada - delta.X * 0,004
+				pitch = math.clamp(pitch - delta.Y * 0.004, -1.4, 1.4)
+			outro
+				UserInputService.MouseBehavior = Enum.MouseBehavior.Default
+			fim
+
+			camera.CFrame = CFrame.new(camCF.Position) * CFrame.Angles(0, yaw, 0) * CFrame.Angles(pitch, 0, 0)
+			camCF = câmera.CFrame
+		fim)
+
+		setState(FreeCamBtn, true, "FreeCam: LIGADO", "FreeCam: DESLIGADO", Color3.fromRGB(200, 110, 30))
+		tocarSom(SOM_ON, 0.5)
+	outro
+		se freecamConnection então
+			freecamConnection:Desconectar()
+			freecamConnection = nulo
+		fim
+
+		definirInvisível(falso)
+		se humanoide então
+			humanoide.PlatformStand = falso
+			humanoide.RotaçãoAutomática = verdadeiro
+		fim
+
+		para câmera de carroNormal()
+		tarefa.atraso(0.05, paraCâmeraNormal)
+
+		setState(FreeCamBtn, false, "FreeCam: LIGADO", "FreeCam: DESLIGADO", Color3.fromRGB(200, 110, 30))
+		tocarSom(SOM_OFF, 0.4)
+	fim
+fim
+
+função local trocarVelora()
+	velocidadeAtual = velocidadeAtual % #velocidades + 1
+	SpeedBtn.Text = "Velocidade: " .. velocidades[velocidadeAtual].nome
+	tocarSom(SOM_ON, 0.35)
+fim
+
+função local alternarFilhos()
+	filhosAtivados = não filhosAtivados
+	setState(SoundBtn, sonsAtivados, "Sons: LIGADO", "Sons: DESLIGADO", Color3.fromRGB(140, 70, 200))
+	if filhosAtivados then tocarSom(SOM_ON, 0.4) end
+fim
+
+-- Conexões
+FlyBtn.MouseButton1Click:Conectar(alternarVoo)
+NoclipBtn.MouseButton1Click:Conectar(alternarNoclip)
+ESPBtn.MouseButton1Click:Conectar(alternarESP)
+FreeCamBtn.MouseButton1Click:Conectar(alternarFreeCam)
+SpeedBtn.MouseButton1Click:Conectar(trocarVelocidade)
+SoundBtn.MouseButton1Click:Conectar(alternarSons)
+CloseBtn.MouseButton1Click:Connect(toggleHub)
+
+UserInputService.InputBegan:Connect(function(input, gp)
+	se gp então retorne fim
+	Se input.KeyCode == TECLA_HUB então
+		alternarHub()
+		retornar
+	fim
+	Se input.UserInputType == Enum.UserInputType.Touch então
+		local agora = tick()
+		se agora - últimoTempoDeToque <= TAP_WINDOW então
+			contagemDeToques += 1
+		outro
+			contagemDeToques = 1
+		fim
+		últimoToque = agora
+		se tapCount >= 3 então
+			alternarHub()
+			contagemDeToques = 0
+		fim
+	fim
+fim)
+
+jogador.PersonagemAdicionado:Conectar(função()
+	se for freecam então
+		freecam = falso
+		se freecamConnection então
+			freecamConnection:Desconectar()
+			freecamConnection = nulo
+		fim
+	fim
+	se estiver voando então
+		voando = falso
+		se flyConnection então flyConnection:Desconectar() fim
+		se bodyVelocity então bodyVelocity:Destroy() fim
+		se bodyGyro então bodyGyro:Destroy() fim
+	fim
+
+	tarefa.esperar(0.3)
+	obterChar()
+	para câmera de carroNormal()
+
+	setState(FreeCamBtn, false, "FreeCam: LIGADO", "FreeCam: DESLIGADO", Color3.fromRGB(200, 110, 30))
+	setState(FlyBtn, false, "Voar: LIGADO", "Voar: DESLIGADO", Color3.fromRGB(0, 140, 200))
+fim)
+
+print("✅ Neon Lighting's (NL) Por arabia carregado")
