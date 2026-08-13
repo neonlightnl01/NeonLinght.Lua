@@ -1,5 +1,5 @@
 -- Neon Lightings.Lua (NL) By arabia
--- Hub com tamanho Normal / Tela Cheia + mais Shaders + Fundo
+-- Tamanho original restaurado
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
@@ -197,11 +197,11 @@ task.spawn(function()
 	LoadingPercent.Text = "100%"
 end)
 
--- ====================== HUB PRINCIPAL ======================
+-- ====================== HUB PRINCIPAL (TAMANHO ORIGINAL) ======================
 local Main = Instance.new("Frame")
 Main.Name = "MainHub"
-Main.Size = UDim2.new(0.96, 0, 0.48, 0)          -- um pouco mais largo
-Main.Position = UDim2.new(0.02, 0, 0.26, 0)
+Main.Size = UDim2.new(0.92, 0, 0.48, 0)          -- TAMANHO ORIGINAL
+Main.Position = UDim2.new(0.04, 0, 0.26, 0)
 Main.BackgroundColor3 = Color3.fromRGB(12, 12, 16)
 Main.BorderSizePixel = 0
 Main.Active = true
@@ -287,23 +287,21 @@ CloseBtn.AutoButtonColor = false
 CloseBtn.ZIndex = 5
 Instance.new("UICorner", CloseBtn).CornerRadius = UDim.new(0, 8)
 
--- ====================== FUNÇÃO DE TAMANHO ======================
+-- ====================== FUNÇÃO DE TAMANHO (ORIGINAL) ======================
 local function setHubSize(full)
 	isFullScreen = full
 	playClickSound()
 
 	if full then
-		-- Tela cheia
 		TweenService:Create(Main, TweenInfo.new(0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-			Size = UDim2.new(0.96, 0, 0.90, 0),
-			Position = UDim2.new(0.02, 0, 0.05, 0)
+			Size = UDim2.new(0.94, 0, 0.90, 0),
+			Position = UDim2.new(0.03, 0, 0.05, 0)
 		}):Play()
 		SizeBtn.Text = "❐"
 	else
-		-- Normal (metade) - um pouco mais largo
 		TweenService:Create(Main, TweenInfo.new(0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-			Size = UDim2.new(0.96, 0, 0.48, 0),
-			Position = UDim2.new(0.02, 0, 0.26, 0)
+			Size = UDim2.new(0.92, 0, 0.48, 0),
+			Position = UDim2.new(0.04, 0, 0.26, 0)
 		}):Play()
 		SizeBtn.Text = "⛶"
 	end
@@ -507,7 +505,7 @@ local flySlider = createSlider(PageMain, 270, "Voo", 20, 200, 55, Color3.fromRGB
 end)
 
 -- =========================================================
--- ====================== SHADERS (MAIS OPÇÕES) ============
+-- ====================== SHADERS ==========================
 -- =========================================================
 local FullbrightBtn   = createButton(PageShaders, "Fullbright: OFF",     8,   Color3.fromRGB(255, 220, 50))
 local NoFogBtn        = createButton(PageShaders, "Sem Névoa: OFF",      52,  Color3.fromRGB(100, 200, 255))
@@ -518,7 +516,6 @@ local HighContrastBtn = createButton(PageShaders, "Alto Contraste: OFF", 228, Co
 local BlackWhiteBtn   = createButton(PageShaders, "Preto & Branco: OFF", 272, Color3.fromRGB(200, 200, 200))
 local BlurBtn         = createButton(PageShaders, "Blur: OFF",           316, Color3.fromRGB(150, 100, 255))
 
--- Effects
 local bloomEffect = nil
 local colorCorrection = nil
 local blurEffect = nil
@@ -1148,4 +1145,4 @@ task.delay(2.8, function()
 	Main.Visible = true
 end)
 
-print("✅ Neon Lighting's (NL) | Tamanho um pouco mais largo + Tudo original")
+print("✅ Neon Lighting's (NL) | Tamanho original restaurado")
